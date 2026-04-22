@@ -4,15 +4,17 @@
 
 ## 技术栈
 
-| 层级 | 技术 |
-|------|------|
-| 后端框架 | FastAPI + Python |
-| AI 框架 | LangChain 0.3 |
-| 向量数据库 | ChromaDB |
-| 语言模型 | OpenAI GPT-4o-mini |
-| 嵌入模型 | text-embedding-3-small |
-| 前端框架 | Vue 3 + TypeScript + Vite |
-| UI 样式 | Tailwind CSS |
+
+| 层级    | 技术                        |
+| ----- | ------------------------- |
+| 后端框架  | FastAPI + Python          |
+| AI 框架 | LangChain                 |
+| 向量数据库 | ChromaDB                  |
+| 语言模型  | OpenAI GPT-4o-mini        |
+| 嵌入模型  | text-embedding-3-small    |
+| 前端框架  | Vue 3 + TypeScript + Vite |
+| UI 样式 | Tailwind CSS              |
+
 
 ## 功能特性
 
@@ -39,8 +41,8 @@ cp backend/.env.example backend/.env
 
 ### 3. 访问应用
 
-- **前端界面**: http://localhost:5173
-- **API 文档**: http://localhost:8000/docs
+- **前端界面**: [http://localhost:5173](http://localhost:5173)
+- **API 文档**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ## 手动启动
 
@@ -85,11 +87,14 @@ learn-agent/
 
 ## API 接口
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/documents/upload` | 上传文档 |
-| GET | `/documents` | 获取文档列表 |
-| DELETE | `/documents/{id}` | 删除文档 |
-| POST | `/chat` | 发送消息（支持流式） |
-| GET | `/sessions/{id}` | 获取会话历史 |
-| DELETE | `/sessions/{id}` | 清除会话 |
+
+| 方法     | 路径                  | 说明         |
+| ------ | ------------------- | ---------- |
+| POST   | `/documents/upload` | 上传文档       |
+| GET    | `/documents`        | 获取文档列表     |
+| DELETE | `/documents/{id}`   | 删除文档       |
+| POST   | `/chat`             | 发送消息（支持流式） |
+| GET    | `/sessions/{id}`    | 获取会话历史     |
+| DELETE | `/sessions/{id}`    | 清除会话       |
+
+
