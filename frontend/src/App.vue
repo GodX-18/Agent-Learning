@@ -14,6 +14,11 @@ import {
   MessageResponse,
 } from '@/components/ai-elements/message'
 import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from '@/components/ai-elements/reasoning'
+import {
   PromptInput,
   PromptInputBody,
   PromptInputFooter,
@@ -25,6 +30,7 @@ interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
+  thinking?: string
   isStreaming?: boolean
 }
 
@@ -60,6 +66,7 @@ async function sendMessage(text: string) {
     id: uuidv4(),
     role: 'assistant',
     content: '',
+    thinking: '',
     isStreaming: true,
   })
 
@@ -69,6 +76,9 @@ async function sendMessage(text: string) {
       if (event.error) {
         last.content = `❌ 错误：${event.error}`
         break
+      }
+      if (event.thinking !== undefined) {
+        last.thinking = (last.thinking || '') + event.thinking
       }
       if (event.chunk) {
         last.content += event.chunk
@@ -234,6 +244,16 @@ onMounted(async () => {
             <template v-for="msg in messages" :key="msg.id">
               <Message :from="msg.role" class="msg-enter">
                 <MessageContent>
+                  <!-- 思考过程 -->
+                  <Reasoning
+                    v-if="msg.thinking"
+                    :is-streaming="msg.isStreaming"
+                    :default-open="true"
+                    class="w-full"
+                  >
+                    <ReasoningTrigger />
+                    <ReasoningContent :content="msg.thinking" />
+                  </Reasoning>
                   <MessageResponse :content="msg.content" />
                 </MessageContent>
               </Message>

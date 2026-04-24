@@ -41,7 +41,7 @@ export async function deleteDocument(docId: string): Promise<void> {
 export async function* streamChat(
   message: string,
   sessionId: string,
-): AsyncGenerator<{ chunk?: string; done?: boolean; error?: string; session_id?: string }> {
+): AsyncGenerator<{ chunk?: string; thinking?: string; done?: boolean; error?: string; session_id?: string }> {
   const res = await fetch(`${BASE_URL}/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -70,7 +70,19 @@ export async function* streamChat(
         const json = line.slice(6).trim()
         if (!json) continue
         try {
-          yield JSON.parse(json)
+          const data = JSON.parse(json)
+          // 解析思考内容标记 [THINKING]...[/THINKING]
+          if (data.chunk && typeof data.chunk === 'string') {
+            const thinkingMatch = data.chunk.match(/^\[THINKING\](.*?)\[\/THINKING\]/s)
+            if (thinkingMatch) {
+              yield { thinking: thinkingMatch[1] }
+              yield { chunk: data.chunk.replace(/^\[THINKING\](.*?)\[\/THINKING\]/s, '') }
+            } else {
+              yield data
+            }
+          } else {
+            yield data
+          }
         } catch {
           // ignore
         }

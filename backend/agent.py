@@ -23,6 +23,8 @@ def _build_llm() -> ChatOpenAI:
         base_url=settings.openai_base_url,
         temperature=0.7,
         streaming=True,
+        # MiniMax-M2.7 会返回 <think>...</think> 标签包含思考过程
+        extra_body={"reasoning_split": False},
     )
 
 
@@ -101,9 +103,13 @@ def _thread_config(session_id: str) -> dict:
 
 
 async def chat_stream(user_message: str, session_id: str) -> AsyncIterator[str]:
-    """流式输出 Agent 响应"""
+    """流式输出 Agent 响应，包含思考过程"""
+    import re
     agent = _build_agent()
     config = _thread_config(session_id)
+
+    # 跨 chunk 缓冲思考标签
+    buffer = ""
 
     async for event in agent.astream_events(
         {"messages": [HumanMessage(content=user_message)]},
@@ -114,8 +120,36 @@ async def chat_stream(user_message: str, session_id: str) -> AsyncIterator[str]:
 
         if kind == "on_chat_model_stream":
             chunk = event.get("data", {}).get("chunk")
-            if chunk and hasattr(chunk, "content") and chunk.content:
-                yield chunk.content
+            if not chunk:
+                continue
+
+            content = getattr(chunk, "content", None)
+            if not content:
+                continue
+
+            buffer += content
+
+            # 循环提取所有完整的思考标签对
+            while True:
+                start = buffer.find("<think>")
+                end = buffer.find("</think>")
+                if start != -1 and end != -1 and start < end:
+                    thinking = buffer[start + 6:end].strip()
+                    yield f"[THINKING]{thinking}[/THINKING]"
+                    buffer = buffer[end + 5:]
+                elif start != -1:
+                    # 思考标签开始了但还没闭合，丢弃之前的内容（正常思考过程）
+                    before_thinking = buffer[:start]
+                    if before_thinking.strip():
+                        yield before_thinking
+                    buffer = buffer[start:]
+                    break
+                else:
+                    # 没有思考标签
+                    if buffer:
+                        yield buffer
+                        buffer = ""
+                    break
 
         elif kind == "on_tool_start":
             tool_name = event.get("name", "")
