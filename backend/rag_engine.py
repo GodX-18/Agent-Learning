@@ -1,5 +1,6 @@
 """RAG 引擎：文档处理、向量存储、检索"""
 import uuid
+from io import BytesIO
 from pathlib import Path
 from typing import List, Optional
 
@@ -9,6 +10,7 @@ from langchain_community.document_loaders import PyPDFLoader, TextLoader
 from langchain_community.document_loaders.word_document import Docx2txtLoader
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
+from docx import Document as DocxDocument
 
 from config import get_settings
 
@@ -134,3 +136,68 @@ def delete_document(doc_id: str, collection_name: str = "documents") -> bool:
         collection.delete(ids=ids_to_delete)
         return True
     return False
+
+
+def resolve_document_file(doc_id: str, collection_name: str = "documents") -> Optional[dict]:
+    """解析文档元数据与原始文件路径"""
+    vs = get_vector_store(collection_name)
+    collection = vs._collection
+    results = collection.get(where={"doc_id": doc_id}, include=["metadatas"])
+
+    metadatas = results.get("metadatas", [])
+    if not metadatas:
+        return None
+
+    metadata = next((meta for meta in metadatas if meta), None)
+    if not metadata:
+        return None
+
+    filename = metadata.get("filename")
+    if not filename:
+        return None
+
+    matches = list(UPLOAD_DIR.glob(f"{doc_id}_*"))
+    if not matches:
+        return None
+
+    file_path = matches[0]
+    return {
+        "doc_id": doc_id,
+        "filename": filename,
+        "file_path": file_path,
+        "suffix": file_path.suffix.lower(),
+    }
+
+
+def get_document_preview(doc_id: str, collection_name: str = "documents") -> Optional[dict]:
+    """读取指定文档的原始内容，供前端预览使用"""
+    resolved = resolve_document_file(doc_id, collection_name)
+    if not resolved:
+        return None
+
+    filename = resolved["filename"]
+    file_path = resolved["file_path"]
+    suffix = resolved["suffix"]
+
+    if suffix == ".pdf":
+        return {
+            "doc_id": doc_id,
+            "filename": filename,
+            "file_type": "pdf",
+            "content": "",
+        }
+
+    if suffix in (".txt", ".md"):
+        content = file_path.read_text(encoding="utf-8")
+    elif suffix in (".doc", ".docx"):
+        doc = DocxDocument(BytesIO(file_path.read_bytes()))
+        content = "\n".join(paragraph.text for paragraph in doc.paragraphs).strip()
+    else:
+        raise ValueError(f"不支持预览的文件类型: {suffix}")
+
+    return {
+        "doc_id": doc_id,
+        "filename": filename,
+        "file_type": suffix.lstrip("."),
+        "content": content,
+    }

@@ -5,6 +5,11 @@ export interface Document {
   filename: string
 }
 
+export interface DocumentPreview extends Document {
+  file_type?: string
+  content: string
+}
+
 export interface Message {
   role: 'user' | 'assistant'
   content: string
@@ -34,6 +39,19 @@ export async function fetchDocuments(): Promise<Document[]> {
 export async function deleteDocument(docId: string): Promise<void> {
   const res = await fetch(`${BASE_URL}/documents/${docId}`, { method: 'DELETE' })
   if (!res.ok) throw new Error('删除失败')
+}
+
+export async function fetchDocumentPreview(docId: string): Promise<DocumentPreview> {
+  const res = await fetch(`${BASE_URL}/documents/${docId}/preview`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.detail || '获取文档预览失败')
+  }
+  return res.json()
+}
+
+export function getDocumentFileUrl(docId: string): string {
+  return `${BASE_URL}/documents/${docId}/file`
 }
 
 // ── 对话接口 ─────────────────────────────────────────────────────────────────

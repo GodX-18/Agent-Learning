@@ -6,12 +6,12 @@ from typing import Optional
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from agent import chat, chat_stream, clear_session, get_session_messages
 from config import get_settings
-from rag_engine import delete_document, ingest_document, list_documents
+from rag_engine import delete_document, get_document_preview, ingest_document, list_documents, resolve_document_file
 
 settings = get_settings()
 
@@ -105,6 +105,34 @@ async def remove_document(doc_id: str):
     if not success:
         raise HTTPException(status_code=404, detail="文档不存在")
     return {"success": True, "message": "文档已删除"}
+
+
+@app.get("/documents/{doc_id}/preview")
+async def preview_document(doc_id: str):
+    """获取文档预览内容"""
+    preview = get_document_preview(doc_id)
+    if not preview:
+        raise HTTPException(status_code=404, detail="文档不存在或无法预览")
+    return preview
+
+
+@app.get("/documents/{doc_id}/file")
+async def get_document_file(doc_id: str):
+    """获取文档原始文件，便于 PDF 等格式直接预览"""
+    resolved = resolve_document_file(doc_id)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="文档不存在")
+
+    file_path = resolved["file_path"]
+    filename = resolved["filename"]
+    suffix = resolved["suffix"]
+    media_type = "application/pdf" if suffix == ".pdf" else None
+
+    return FileResponse(
+        path=file_path,
+        media_type=media_type,
+        content_disposition_type="inline",
+    )
 
 
 # ─── 对话接口 ──────────────────────────────────────────────────────────────────

@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { uploadDocument, fetchDocuments, deleteDocument, type Document } from '../api'
+import { computed, onMounted, ref } from 'vue'
+import { fetchDocumentPreview, fetchDocuments, deleteDocument, getDocumentFileUrl, uploadDocument, type Document, type DocumentPreview } from '../api'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import MessageResponse from './ai-elements/message/MessageResponse.vue'
 
 const documents = ref<Document[]>([])
 const uploading = ref(false)
 const error = ref('')
 const dragOver = ref(false)
 const fileInput = ref<HTMLInputElement>()
+const previewOpen = ref(false)
+const previewLoading = ref(false)
+const previewError = ref('')
+const previewDocument = ref<DocumentPreview | null>(null)
 
 const emit = defineEmits<{
   upload: [doc: Document & { chunks: number }]
@@ -43,8 +49,27 @@ async function handleDelete(docId: string) {
   try {
     await deleteDocument(docId)
     documents.value = documents.value.filter(d => d.doc_id !== docId)
+    if (previewDocument.value?.doc_id === docId) {
+      previewOpen.value = false
+      previewDocument.value = null
+    }
   } catch (e: any) {
     error.value = e.message
+  }
+}
+
+async function handlePreview(doc: Document) {
+  previewOpen.value = true
+  previewLoading.value = true
+  previewError.value = ''
+  previewDocument.value = null
+
+  try {
+    previewDocument.value = await fetchDocumentPreview(doc.doc_id)
+  } catch (e: any) {
+    previewError.value = e.message
+  } finally {
+    previewLoading.value = false
   }
 }
 
@@ -65,6 +90,17 @@ function getIcon(filename: string) {
   const ext = filename.split('.').pop()?.toLowerCase() ?? ''
   return fileIcons[ext] ?? '📄'
 }
+
+const previewContent = computed(() => {
+  const content = previewDocument.value?.content?.trim()
+  return content || '文档内容为空，暂时没有可展示的文本。'
+})
+
+const isPdfPreview = computed(() => previewDocument.value?.file_type === 'pdf')
+const previewFileUrl = computed(() => {
+  if (!previewDocument.value) return ''
+  return getDocumentFileUrl(previewDocument.value.doc_id)
+})
 
 onMounted(loadDocuments)
 </script>
@@ -130,13 +166,14 @@ onMounted(loadDocuments)
         <div
           v-for="doc in documents"
           :key="doc.doc_id"
-          class="group flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/40 rounded-lg px-3 py-2.5 hover:border-slate-600/60 transition-all"
+          class="group flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/40 rounded-lg px-3 py-2.5 hover:border-indigo-500/40 hover:bg-slate-800 transition-all cursor-pointer"
+          @click="handlePreview(doc)"
         >
           <span class="text-base flex-shrink-0">{{ getIcon(doc.filename) }}</span>
           <span class="flex-1 text-xs text-slate-300 truncate" :title="doc.filename">{{ doc.filename }}</span>
           <button
             class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-900/40 text-slate-500 hover:text-red-400"
-            @click="handleDelete(doc.doc_id)"
+            @click.stop="handleDelete(doc.doc_id)"
             title="删除"
           >
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -146,6 +183,47 @@ onMounted(loadDocuments)
         </div>
       </TransitionGroup>
     </div>
+
+    <Dialog v-model:open="previewOpen">
+      <DialogContent class="w-[min(92vw,1100px)] max-w-[1100px] border-slate-800 bg-slate-950 text-slate-100 p-6">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2 text-base">
+            <span>{{ previewDocument ? getIcon(previewDocument.filename) : '📄' }}</span>
+            <span class="truncate">{{ previewDocument?.filename || '文档预览' }}</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        <div class="mt-4 max-h-[75vh] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900/70">
+          <div v-if="previewLoading" class="px-4 py-10 text-center text-sm text-slate-400">
+            正在加载文档预览...
+          </div>
+          <div v-else-if="previewError" class="px-4 py-10 text-center text-sm text-red-400">
+            {{ previewError }}
+          </div>
+          <div v-else-if="isPdfPreview" class="flex h-[75vh] flex-col overflow-hidden">
+            <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3 text-xs text-slate-400">
+              <span>PDF 已切换为原文件预览，版式会比文本抽取更准确。</span>
+              <a
+                :href="previewFileUrl"
+                target="_blank"
+                rel="noreferrer"
+                class="text-indigo-400 transition hover:text-indigo-300"
+              >
+                新窗口打开
+              </a>
+            </div>
+            <iframe
+              :src="previewFileUrl"
+              class="h-full w-full bg-white"
+              title="PDF 预览"
+            />
+          </div>
+          <div v-else class="preview-markdown px-6 py-5">
+            <MessageResponse :content="previewContent" class="text-slate-200" />
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -161,5 +239,103 @@ onMounted(loadDocuments)
 .doc-list-leave-to {
   opacity: 0;
   transform: translateX(8px);
+}
+
+:deep(.preview-markdown .prose) {
+  max-width: none;
+}
+
+:deep(.preview-markdown h1),
+:deep(.preview-markdown h2),
+:deep(.preview-markdown h3),
+:deep(.preview-markdown h4) {
+  color: #f8fafc;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 1.25rem 0 0.75rem;
+}
+
+:deep(.preview-markdown h1) {
+  font-size: 1.75rem;
+}
+
+:deep(.preview-markdown h2) {
+  font-size: 1.35rem;
+}
+
+:deep(.preview-markdown h3) {
+  font-size: 1.1rem;
+}
+
+:deep(.preview-markdown p),
+:deep(.preview-markdown li),
+:deep(.preview-markdown blockquote) {
+  color: #cbd5e1;
+  line-height: 1.8;
+}
+
+:deep(.preview-markdown p),
+:deep(.preview-markdown ul),
+:deep(.preview-markdown ol),
+:deep(.preview-markdown pre),
+:deep(.preview-markdown table),
+:deep(.preview-markdown blockquote) {
+  margin: 0.9rem 0;
+}
+
+:deep(.preview-markdown ul),
+:deep(.preview-markdown ol) {
+  padding-left: 1.4rem;
+}
+
+:deep(.preview-markdown a) {
+  color: #818cf8;
+}
+
+:deep(.preview-markdown strong) {
+  color: #f8fafc;
+}
+
+:deep(.preview-markdown code) {
+  color: #e2e8f0;
+}
+
+:deep(.preview-markdown pre) {
+  overflow-x: auto;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 0.9rem;
+  background: rgba(15, 23, 42, 0.92);
+  padding: 1rem;
+}
+
+:deep(.preview-markdown pre code) {
+  display: block;
+  white-space: pre;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+:deep(.preview-markdown blockquote) {
+  border-left: 3px solid rgba(99, 102, 241, 0.65);
+  padding-left: 1rem;
+}
+
+:deep(.preview-markdown table) {
+  width: 100%;
+  border-collapse: collapse;
+  overflow: hidden;
+  border-radius: 0.8rem;
+}
+
+:deep(.preview-markdown th),
+:deep(.preview-markdown td) {
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+}
+
+:deep(.preview-markdown th) {
+  background: rgba(30, 41, 59, 0.9);
+  color: #f8fafc;
 }
 </style>
