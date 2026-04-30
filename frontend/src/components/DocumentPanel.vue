@@ -107,10 +107,10 @@ onMounted(loadDocuments)
 
 <template>
   <div class="flex flex-col h-full">
-    <div class="px-4 py-3 border-b border-slate-700/50">
-      <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+    <div class="px-4 py-3 border-b border-border">
+      <h2 class="text-sm font-semibold text-foreground flex items-center gap-2">
         <span>📚</span> 知识库文档
-        <span class="ml-auto text-xs text-slate-500">{{ documents.length }} 个文件</span>
+        <span class="ml-auto text-xs text-muted-foreground">{{ documents.length }} 个文件</span>
       </h2>
     </div>
 
@@ -120,8 +120,8 @@ onMounted(loadDocuments)
         class="relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200"
         :class="[
           dragOver
-            ? 'border-indigo-400 bg-indigo-900/20'
-            : 'border-slate-600 hover:border-indigo-500/60 hover:bg-slate-800/50',
+            ? 'border-indigo-400 bg-indigo-900/20 dark:bg-indigo-900/30'
+            : 'border-border hover:border-indigo-500/60 hover:bg-accent dark:hover:bg-accent/50',
         ]"
         @dragover.prevent="dragOver = true"
         @dragleave="dragOver = false"
@@ -137,7 +137,7 @@ onMounted(loadDocuments)
           @change="handleFiles(($event.target as HTMLInputElement).files)"
         />
 
-        <div v-if="uploading" class="flex flex-col items-center gap-2 text-indigo-400">
+        <div v-if="uploading" class="flex flex-col items-center gap-2 text-indigo-500 dark:text-indigo-400">
           <svg class="animate-spin w-6 h-6" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
@@ -146,19 +146,19 @@ onMounted(loadDocuments)
         </div>
         <div v-else class="flex flex-col items-center gap-1.5">
           <span class="text-2xl">☁️</span>
-          <p class="text-xs text-slate-400">拖拽文件到此处，或<span class="text-indigo-400 font-medium">点击上传</span></p>
-          <p class="text-xs text-slate-600">支持 PDF、TXT、MD、DOCX</p>
+          <p class="text-xs text-muted-foreground">拖拽文件到此处，或<span class="text-indigo-500 dark:text-indigo-400 font-medium">点击上传</span></p>
+          <p class="text-xs text-muted-foreground/60">支持 PDF、TXT、MD、DOCX</p>
         </div>
       </div>
 
-      <p v-if="error" class="mt-2 text-xs text-red-400 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-2">
+      <p v-if="error" class="mt-2 text-xs text-red-500 dark:text-red-400 bg-red-500/10 dark:bg-red-900/20 border border-red-500/20 dark:border-red-800/40 rounded-lg px-3 py-2">
         {{ error }}
       </p>
     </div>
 
     <!-- 文档列表 -->
     <div class="flex-1 overflow-y-auto scrollbar-thin px-3 pb-3">
-      <div v-if="documents.length === 0" class="text-center py-8 text-slate-500 text-xs">
+      <div v-if="documents.length === 0" class="text-center py-8 text-muted-foreground text-xs">
         暂无文档，上传文件开始构建知识库
       </div>
 
@@ -166,13 +166,13 @@ onMounted(loadDocuments)
         <div
           v-for="doc in documents"
           :key="doc.doc_id"
-          class="group flex items-center gap-2.5 bg-slate-800/60 border border-slate-700/40 rounded-lg px-3 py-2.5 hover:border-indigo-500/40 hover:bg-slate-800 transition-all cursor-pointer"
+          class="group flex items-center gap-2.5 bg-card dark:bg-secondary/30 border border-border hover:border-indigo-500/60 hover:bg-accent dark:hover:bg-secondary/50 transition-all cursor-pointer rounded-lg px-3 py-2.5"
           @click="handlePreview(doc)"
         >
           <span class="text-base flex-shrink-0">{{ getIcon(doc.filename) }}</span>
-          <span class="flex-1 text-xs text-slate-300 truncate" :title="doc.filename">{{ doc.filename }}</span>
+          <span class="flex-1 text-xs text-foreground truncate" :title="doc.filename">{{ doc.filename }}</span>
           <button
-            class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-900/40 text-slate-500 hover:text-red-400"
+            class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-500/10 dark:hover:bg-red-900/40 text-muted-foreground hover:text-red-500 dark:text-red-400"
             @click.stop="handleDelete(doc.doc_id)"
             title="删除"
           >
@@ -185,7 +185,7 @@ onMounted(loadDocuments)
     </div>
 
     <Dialog v-model:open="previewOpen">
-      <DialogContent class="w-[min(92vw,1100px)] max-w-[1100px] border-slate-800 bg-slate-950 text-slate-100 p-6">
+      <DialogContent class="w-[min(92vw,1100px)] max-w-[1100px)] border-border bg-card text-foreground p-6">
         <DialogHeader>
           <DialogTitle class="flex items-center gap-2 text-base">
             <span>{{ previewDocument ? getIcon(previewDocument.filename) : '📄' }}</span>
@@ -193,33 +193,33 @@ onMounted(loadDocuments)
           </DialogTitle>
         </DialogHeader>
 
-        <div class="mt-4 max-h-[75vh] overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900/70">
-          <div v-if="previewLoading" class="px-4 py-10 text-center text-sm text-slate-400">
+        <div class="mt-4 max-h-[75vh] overflow-y-auto rounded-2xl border border-border bg-muted/30 dark:bg-muted/50">
+          <div v-if="previewLoading" class="px-4 py-10 text-center text-sm text-muted-foreground">
             正在加载文档预览...
           </div>
-          <div v-else-if="previewError" class="px-4 py-10 text-center text-sm text-red-400">
+          <div v-else-if="previewError" class="px-4 py-10 text-center text-sm text-red-500 dark:text-red-400">
             {{ previewError }}
           </div>
           <div v-else-if="isPdfPreview" class="flex h-[75vh] flex-col overflow-hidden">
-            <div class="flex items-center justify-between border-b border-slate-800 px-5 py-3 text-xs text-slate-400">
+            <div class="flex items-center justify-between border-b border-border px-5 py-3 text-xs text-muted-foreground">
               <span>PDF 已切换为原文件预览，版式会比文本抽取更准确。</span>
               <a
                 :href="previewFileUrl"
                 target="_blank"
                 rel="noreferrer"
-                class="text-indigo-400 transition hover:text-indigo-300"
+                class="text-indigo-500 dark:text-indigo-400 transition hover:text-indigo-600 dark:hover:text-indigo-300"
               >
                 新窗口打开
               </a>
             </div>
             <iframe
               :src="previewFileUrl"
-              class="h-full w-full bg-white"
+              class="h-full w-full bg-white dark:bg-black"
               title="PDF 预览"
             />
           </div>
           <div v-else class="preview-markdown px-6 py-5">
-            <MessageResponse :content="previewContent" class="text-slate-200" />
+            <MessageResponse :content="previewContent" class="text-foreground" />
           </div>
         </div>
       </DialogContent>
@@ -249,7 +249,7 @@ onMounted(loadDocuments)
 :deep(.preview-markdown h2),
 :deep(.preview-markdown h3),
 :deep(.preview-markdown h4) {
-  color: #f8fafc;
+  color: var(--foreground);
   font-weight: 700;
   line-height: 1.25;
   margin: 1.25rem 0 0.75rem;
@@ -270,7 +270,7 @@ onMounted(loadDocuments)
 :deep(.preview-markdown p),
 :deep(.preview-markdown li),
 :deep(.preview-markdown blockquote) {
-  color: #cbd5e1;
+  color: var(--muted-foreground);
   line-height: 1.8;
 }
 
@@ -289,22 +289,22 @@ onMounted(loadDocuments)
 }
 
 :deep(.preview-markdown a) {
-  color: #818cf8;
+  color: var(--primary);
 }
 
 :deep(.preview-markdown strong) {
-  color: #f8fafc;
+  color: var(--foreground);
 }
 
 :deep(.preview-markdown code) {
-  color: #e2e8f0;
+  color: var(--foreground);
 }
 
 :deep(.preview-markdown pre) {
   overflow-x: auto;
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border);
   border-radius: 0.9rem;
-  background: rgba(15, 23, 42, 0.92);
+  background: var(--muted);
   padding: 1rem;
 }
 
@@ -316,7 +316,7 @@ onMounted(loadDocuments)
 }
 
 :deep(.preview-markdown blockquote) {
-  border-left: 3px solid rgba(99, 102, 241, 0.65);
+  border-left: 3px solid var(--primary);
   padding-left: 1rem;
 }
 
@@ -329,13 +329,13 @@ onMounted(loadDocuments)
 
 :deep(.preview-markdown th),
 :deep(.preview-markdown td) {
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--border);
   padding: 0.7rem 0.85rem;
   text-align: left;
 }
 
 :deep(.preview-markdown th) {
-  background: rgba(30, 41, 59, 0.9);
-  color: #f8fafc;
+  background: var(--muted);
+  color: var(--foreground);
 }
 </style>

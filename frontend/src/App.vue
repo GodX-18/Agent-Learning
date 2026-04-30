@@ -21,6 +21,8 @@ import {
   PromptInputTextarea,
 } from '@/components/ai-elements/prompt-input'
 
+type Theme = 'light' | 'dark' | 'system'
+
 interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
@@ -35,6 +37,51 @@ const sidebarOpen = ref(true)
 const serverOnline = ref(true)
 const notification = ref('')
 const notifTimer = ref<ReturnType<typeof setTimeout>>()
+const theme = ref<Theme>('system')
+
+const isDark = computed(() => {
+  if (theme.value === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+  return theme.value === 'dark'
+})
+
+function setTheme(newTheme: Theme) {
+  theme.value = newTheme
+  localStorage.setItem('theme', newTheme)
+  updateThemeClass()
+}
+
+function updateThemeClass() {
+  if (theme.value === 'system') {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    document.documentElement.classList.toggle('dark', prefersDark)
+  } else {
+    document.documentElement.classList.toggle('dark', theme.value === 'dark')
+  }
+}
+
+function toggleTheme() {
+  const themes: Theme[] = ['light', 'dark', 'system']
+  const currentIndex = themes.indexOf(theme.value)
+  const nextTheme = themes[(currentIndex + 1) % themes.length]
+  setTheme(nextTheme)
+}
+
+onMounted(() => {
+  const savedTheme = localStorage.getItem('theme') as Theme | null
+  if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+    theme.value = savedTheme
+  }
+  updateThemeClass()
+
+  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaQuery.addEventListener('change', () => {
+    if (theme.value === 'system') {
+      updateThemeClass()
+    }
+  })
+})
 
 const chatStatus = computed(() => isLoading.value ? 'streaming' : 'ready')
 
@@ -113,7 +160,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex h-screen overflow-hidden dark bg-background text-foreground">
+  <div class="flex h-screen overflow-hidden bg-background text-foreground">
     <!-- 侧边栏 -->
     <Transition name="sidebar">
       <aside
@@ -183,14 +230,19 @@ onMounted(async () => {
         </button>
         <h2 class="text-sm font-semibold text-foreground">智能对话</h2>
         <div class="ml-auto flex items-center gap-2">
-          <span class="text-xs text-muted-foreground font-mono">{{ sessionId.slice(0, 8) }}...</span>
+          <!-- 主题切换 -->
           <button
-            class="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-destructive transition-colors"
-            title="清除对话"
-            @click="newChat"
+            class="p-1.5 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            :title="`当前主题: ${theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '跟随系统'}`"
+            @click="toggleTheme"
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <!-- 太阳图标 - 浅色模式 -->
+            <svg v-if="isDark" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <!-- 月亮图标 - 深色模式 -->
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
             </svg>
           </button>
         </div>
