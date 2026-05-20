@@ -41,7 +41,7 @@ sleep 2
 
 # 安装前端依赖
 echo -e "${GREEN}📦 安装前端依赖...${NC}"
-cd frontend
+cd frontend-course
 if [ ! -d "node_modules" ]; then
     npm install
 fi
